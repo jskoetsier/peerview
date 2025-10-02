@@ -1,0 +1,468 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Header with Stats -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h1 class="h3 mb-0">
+                <i class="bi bi-diagram-3 me-2 text-primary"></i>
+                BGP Peering Sessions
+            </h1>
+            <div class="d-flex gap-2">
+                <button class="btn btn-outline-primary btn-sm" onclick="window.location.reload()">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="toggleFilters()">
+                    <i class="bi bi-funnel me-1"></i>Filters
+                </button>
+            </div>
+        </div>
+        
+        <!-- Quick Stats -->
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-md-3">
+                <div class="card stats-card text-center">
+                    <div class="card-body py-2">
+                        <h5 class="card-title text-success mb-0">{{ peers|length }}</h5>
+                        <small class="text-muted">Total Peers</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card stats-card text-center">
+                    <div class="card-body py-2">
+                        <h5 class="card-title text-primary mb-0" id="established-count">-</h5>
+                        <small class="text-muted">Established</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card stats-card text-center">
+                    <div class="card-body py-2">
+                        <h5 class="card-title text-warning mb-0" id="down-count">-</h5>
+                        <small class="text-muted">Down</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card stats-card text-center">
+                    <div class="card-body py-2">
+                        <h5 class="card-title text-info mb-0">{{ ixps|length }}</h5>
+                        <small class="text-muted">Exchanges</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Legend -->
+<div class="row mb-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body py-2">
+                <p class="mb-1"><strong>Status Legend:</strong></p>
+                <div class="d-flex flex-wrap gap-3 legend">
+                    <span><span class="session-status status-established">Established</span> Everything OK</span>
+                    <span><span class="session-status status-warning">Notice</span> Issue &lt; 24 hours</span>
+                    <span><span class="session-status status-info">Warning</span> Issue &lt; 1 week</span>
+                    <span><span class="session-status status-danger">Failed</span> Issue &gt; 1 week</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters Section -->
+<div class="filter-section" id="filter-section" style="display: none;">
+    <form method="get" id="filterForm">
+        <div class="row g-3">
+            <!-- Basic Filters -->
+            <div class="col-md-4">
+                <label for="peername" class="form-label">Peer Name</label>
+                <input type="text" class="form-control form-control-sm" id="peername" name="peername" 
+                       value="{{ filters.peername or '' }}" placeholder="Filter by peer name">
+            </div>
+            <div class="col-md-4">
+                <label for="asn" class="form-label">ASN</label>
+                <input type="text" class="form-control form-control-sm" id="asn" name="asn" 
+                       value="{{ filters.asn or '' }}" placeholder="Filter by ASN">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <div class="btn-group w-100" role="group">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-funnel me-1"></i>Apply Filters
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearFilters()">
+                        <i class="bi bi-x-circle me-1"></i>Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- IXP Filters -->
+        <div class="row mt-3">
+            <div class="col-12">
+                <h6 class="mb-2">Exchange Filters:</h6>
+                <div class="row g-2">
+                    {% for ix_name, ix_config in ixps.items() %}
+                    <div class="col-md-3">
+                        <div class="card">
+                            <div class="card-body p-2">
+                                <h6 class="card-title mb-2 text-center">{{ ix_config.pretty_name }}</h6>
+                                <div class="row g-1">
+                                    <div class="col-6">
+                                        <label class="form-label" style="font-size: 0.75rem;">IPv4</label>
+                                        <select class="form-select form-select-sm" name="{{ ix_name }}_ipv4">
+                                            <option value="any" {% if filters[ix_name + '_ipv4'] == 'any' %}selected{% endif %}>Any</option>
+                                            <option value="established" {% if filters[ix_name + '_ipv4'] == 'established' %}selected{% endif %}>Established</option>
+                                            <option value="configured" {% if filters[ix_name + '_ipv4'] == 'configured' %}selected{% endif %}>Configured</option>
+                                            <option value="not_connected" {% if filters[ix_name + '_ipv4'] == 'not_connected' %}selected{% endif %}>Not Connected</option>
+                                            <option value="not_configured" {% if filters[ix_name + '_ipv4'] == 'not_configured' %}selected{% endif %}>Not Configured</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label" style="font-size: 0.75rem;">IPv6</label>
+                                        <select class="form-select form-select-sm" name="{{ ix_name }}_ipv6">
+                                            <option value="any" {% if filters[ix_name + '_ipv6'] == 'any' %}selected{% endif %}>Any</option>
+                                            <option value="established" {% if filters[ix_name + '_ipv6'] == 'established' %}selected{% endif %}>Established</option>
+                                            <option value="configured" {% if filters[ix_name + '_ipv6'] == 'configured' %}selected{% endif %}>Configured</option>
+                                            <option value="not_connected" {% if filters[ix_name + '_ipv6'] == 'not_connected' %}selected{% endif %}>Not Connected</option>
+                                            <option value="not_configured" {% if filters[ix_name + '_ipv6'] == 'not_configured' %}selected{% endif %}>Not Configured</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Main Peering Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm peer-table mb-0">
+                        <thead class="sticky-top">
+                            <tr>
+                                <th rowspan="2" class="border-end">
+                                    <a href="?sort=name&sortdir={{ 'desc' if sort_column == 'name' and sort_direction == 'asc' else 'asc' }}" 
+                                       class="text-decoration-none text-dark">
+                                        Peer Name
+                                        {% if sort_column == 'name' %}
+                                            <i class="bi bi-caret-{{ 'down' if sort_direction == 'desc' else 'up' }}-fill"></i>
+                                        {% endif %}
+                                    </a>
+                                </th>
+                                <th rowspan="2" class="border-end">
+                                    <a href="?sort=asn&sortdir={{ 'desc' if sort_column == 'asn' and sort_direction == 'asc' else 'asc' }}" 
+                                       class="text-decoration-none text-dark">
+                                        ASN
+                                        {% if sort_column == 'asn' %}
+                                            <i class="bi bi-caret-{{ 'down' if sort_direction == 'desc' else 'up' }}-fill"></i>
+                                        {% endif %}
+                                    </a>
+                                </th>
+                                {% for ix_name, ix_config in ixps.items() %}
+                                <th colspan="2" class="text-center border-end">{{ ix_config.pretty_name }}</th>
+                                {% endfor %}
+                            </tr>
+                            <tr>
+                                {% for ix_name, ix_config in ixps.items() %}
+                                <th class="text-center">IPv4</th>
+                                <th class="text-center border-end">IPv6</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for asn, peer in peers.items() %}
+                            <tr class="clickable-row" onclick="showPeerDetails('{{ asn }}')">
+                                <td class="border-end">
+                                    <div class="d-flex align-items-center">
+                                        <div>
+                                            <div class="fw-medium">{{ peer.description or 'Unknown' }}</div>
+                                            <small class="text-muted">{{ asn }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="border-end text-center">
+                                    <span class="badge bg-secondary">{{ asn.replace('AS', '') }}</span>
+                                </td>
+                                
+                                {% for ix_name, ix_config in ixps.items() %}
+                                    {% set ipv4_sessions = peer.sessions.get('ipv4', {}).get(ix_name, []) %}
+                                    {% set ipv6_sessions = peer.sessions.get('ipv6', {}).get(ix_name, []) %}
+                                    
+                                    <!-- IPv4 Column -->
+                                    <td class="session-cell text-center">
+                                        {% if ipv4_sessions %}
+                                            {% for session in ipv4_sessions %}
+                                                <div class="session-status status-{{ dashboard.get_session_status_class(session) }}">
+                                                    S{{ loop.index }}: {{ session.state }}
+                                                </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    
+                                    <!-- IPv6 Column -->
+                                    <td class="session-cell text-center border-end">
+                                        {% if ipv6_sessions %}
+                                            {% for session in ipv6_sessions %}
+                                                <div class="session-status status-{{ dashboard.get_session_status_class(session) }}">
+                                                    S{{ loop.index }}: {{ session.state }}
+                                                </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                            
+                            {% if not peers %}
+                            <tr>
+                                <td colspan="{{ 2 + (ixps|length * 2) }}" class="text-center py-4 text-muted">
+                                    <i class="bi bi-inbox display-4 d-block mb-2"></i>
+                                    No peers found matching the current filters
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Peer Details Modal -->
+<div class="modal fade" id="peerModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="peerModalTitle">Peer Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="peerModalBody">
+                <div class="text-center">
+                    <div class="spinner-border" role="status"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Calculate and display session statistics
+function updateSessionStats() {
+    let established = 0;
+    let down = 0;
+    
+    document.querySelectorAll('.session-status').forEach(status => {
+        if (status.classList.contains('status-established')) {
+            established++;
+        } else if (!status.classList.contains('text-muted')) {
+            down++;
+        }
+    });
+    
+    document.getElementById('established-count').textContent = established;
+    document.getElementById('down-count').textContent = down;
+}
+
+// Toggle filter section
+function toggleFilters() {
+    const filterSection = document.getElementById('filter-section');
+    filterSection.style.display = filterSection.style.display === 'none' ? 'block' : 'none';
+}
+
+// Clear all filters
+function clearFilters() {
+    const form = document.getElementById('filterForm');
+    const inputs = form.querySelectorAll('input, select');
+    inputs.forEach(input => {
+        if (input.type === 'text') {
+            input.value = '';
+        } else if (input.tagName === 'SELECT') {
+            input.value = 'any';
+        }
+    });
+    form.submit();
+}
+
+// Show peer details modal
+function showPeerDetails(asn) {
+    const modal = new bootstrap.Modal(document.getElementById('peerModal'));
+    document.getElementById('peerModalTitle').textContent = `Peer Details - ${asn}`;
+    document.getElementById('peerModalBody').innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border" role="status"></div>
+            <p class="mt-2">Loading peer details...</p>
+        </div>
+    `;
+    
+    modal.show();
+    
+    // Fetch detailed peer information
+    fetch(`/api/peer/${asn}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById('peerModalBody').innerHTML = `
+                    <div class="alert alert-danger">${data.error}</div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h6>Basic Information</h6>
+                        <table class="table table-sm">
+                            <tr><td><strong>ASN:</strong></td><td>${data.asn}</td></tr>
+                            <tr><td><strong>Description:</strong></td><td>${data.description || 'Unknown'}</td></tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Session Summary</h6>
+                        <div class="row text-center">
+            `;
+            
+            let totalSessions = 0;
+            let establishedSessions = 0;
+            
+            ['ipv4', 'ipv6'].forEach(afi => {
+                Object.values(data.sessions[afi] || {}).forEach(sessions => {
+                    totalSessions += sessions.length;
+                    establishedSessions += sessions.filter(s => s.state === 'Established').length;
+                });
+            });
+            
+            html += `
+                            <div class="col-6">
+                                <h5 class="text-success">${establishedSessions}</h5>
+                                <small>Established</small>
+                            </div>
+                            <div class="col-6">
+                                <h5 class="text-warning">${totalSessions - establishedSessions}</h5>
+                                <small>Down</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <h6>Sessions by Exchange</h6>
+                <div class="accordion" id="sessionAccordion">
+            `;
+            
+            // Group sessions by exchange
+            const exchangeSessions = {};
+            ['ipv4', 'ipv6'].forEach(afi => {
+                Object.entries(data.sessions[afi] || {}).forEach(([ix, sessions]) => {
+                    if (!exchangeSessions[ix]) exchangeSessions[ix] = {};
+                    exchangeSessions[ix][afi] = sessions;
+                });
+            });
+            
+            Object.entries(exchangeSessions).forEach(([ix, afis], index) => {
+                const ixName = ix.replace('-', '').toUpperCase();
+                html += `
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button ${index > 0 ? 'collapsed' : ''}" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#collapse${index}">
+                                ${ixName}
+                            </button>
+                        </h2>
+                        <div id="collapse${index}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" 
+                             data-bs-parent="#sessionAccordion">
+                            <div class="accordion-body">
+                                <div class="row">
+                `;
+                
+                ['ipv4', 'ipv6'].forEach(afi => {
+                    const sessions = afis[afi] || [];
+                    html += `
+                        <div class="col-md-6">
+                            <h6>${afi.toUpperCase()}</h6>
+                            ${sessions.length > 0 ? 
+                                sessions.map(session => `
+                                    <div class="card mb-2">
+                                        <div class="card-body p-2">
+                                            <div class="d-flex justify-content-between">
+                                                <span class="session-status status-${getStatusClass(session.state)}">
+                                                    ${session.state}
+                                                </span>
+                                                <small class="text-muted">${session.since}</small>
+                                            </div>
+                                            <small class="text-muted">${session.neighbor_address}</small>
+                                        </div>
+                                    </div>
+                                `).join('')
+                                : '<p class="text-muted">No sessions</p>'
+                            }
+                        </div>
+                    `;
+                });
+                
+                html += `
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            
+            document.getElementById('peerModalBody').innerHTML = html;
+        })
+        .catch(error => {
+            document.getElementById('peerModalBody').innerHTML = `
+                <div class="alert alert-danger">Error loading peer details: ${error.message}</div>
+            `;
+        });
+}
+
+function getStatusClass(state) {
+    if (state === 'Established') return 'established';
+    return 'danger';
+}
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    updateSessionStats();
+    
+    // Auto-submit form on filter changes
+    document.querySelectorAll('#filterForm select').forEach(select => {
+        select.addEventListener('change', function() {
+            if (this.value !== 'any') {
+                document.getElementById('filterForm').submit();
+            }
+        });
+    });
+    
+    // Handle enter key in filter inputs
+    document.querySelectorAll('#filterForm input').forEach(input => {
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('filterForm').submit();
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

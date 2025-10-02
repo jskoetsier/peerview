@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  peerview:
+    build: .
+    container_name: as200132-peerview
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - peerview-logs:/var/log/peerview
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - peerview-network
+
+  # Optional: Redis for advanced caching
+  redis:
+    image: redis:7-alpine
+    container_name: as200132-peerview-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy allkeys-lru
+    networks:
+      - peerview-network
+
+  # Optional: Nginx reverse proxy
+  nginx:
+    image: nginx:alpine
+    container_name: as200132-peerview-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - peerview
+    networks:
+      - peerview-network
+
+volumes:
+  peerview-logs:
+  redis-data:
+
+networks:
+  peerview-network:
+    driver: bridge

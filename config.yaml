@@ -1,0 +1,71 @@
+# Configuration for PeerView - AS200132 BGP Dashboard
+# Modern Python/Flask replacement for PHP peering dashboard
+
+# Session definitions and routers
+session_definition_url: 'https://raw.githubusercontent.com/poweredgenl/networkstuff/main/peering/peers_as200132.yaml'
+routers:
+  - '195.95.177.2'
+  - '195.95.177.3'
+
+# Internet Exchange Points configuration
+ixps:
+  amsix:
+    pretty_name: 'AMS-IX'
+    ipv4_range: ['80.249.208.0', '80.249.215.254']
+    ipv6_range: ['2001:7f8:1:0:0:0:0:0', '2001:7f8:1:0:ffff:ffff:ffff:ffff']
+    
+  frys-ix:
+    pretty_name: 'Frys-IX'
+    ipv4_range: ['185.1.160.0', '185.1.161.255']
+    ipv6_range: ['2001:7f8:10f:0:0:0:0:0', '2001:7f8:10f:0:ffff:ffff:ffff:ffff']
+    
+  speedix:
+    pretty_name: 'SpeedIX'
+    ipv4_range: ['185.1.222.0', '185.1.223.255']
+    ipv6_range: ['2001:7f8:b7:0:0:0:0:0', '2001:7f8:b7:0:ffff:ffff:ffff:ffff']
+    
+  nlix:
+    pretty_name: 'NL-IX'
+    ipv4_range: ['193.239.116.0', '193.239.119.255']
+    ipv6_range: ['2001:7f8:13:0:0:0:0:0', '2001:7f8:13:0:ffff:ffff:ffff:ffff']
+    
+  loc-ix:
+    pretty_name: 'Loc-IX'
+    ipv4_range: ['185.1.138.0', '185.1.138.255']
+    ipv6_range: ['2a0c:b641:700:0:0:0:0:0', '2a0c:b641:700:0:ffff:ffff:ffff:ffff']
+    
+  interix:
+    pretty_name: 'InterIX'
+    ipv4_range: ['185.0.1.0', '185.0.1.255']
+    ipv6_range: ['2001:7f8:134:0:0:0:0:0', '2001:7f8:134:0:ffff:ffff:ffff:ffff']
+    
+  lsix:
+    pretty_name: 'LayerswitchIX'
+    ipv4_range: ['185.1.32.0', '185.1.32.255']
+    ipv6_range: ['2001:7f8:8f:0:0:0:0:0', '2001:7f8:8f:0:ffff:ffff:ffff:ffff']
+    
+  fogixp:
+    pretty_name: 'FogIXP'
+    ipv4_range: ['185.1.147.0', '185.1.147.255']
+    ipv6_range: ['2001:7f8:ca:1:0:0:0:0', '2001:7f8:ca:1:ffff:ffff:ffff:ffff']
+
+# Warning thresholds for session state changes
+warning_thresholds:
+  short: 86400   # 1 day in seconds
+  long: 604800   # 1 week in seconds
+
+# Application settings
+app:
+  host: '0.0.0.0'
+  port: 5000
+  debug: false
+  
+# Caching settings
+cache:
+  ttl: 60  # Cache TTL in seconds
+  
+# Logging configuration
+logging:
+  level: 'INFO'
+  file: '/var/log/peerview/app.log'
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
