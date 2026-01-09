@@ -1,6 +1,6 @@
 # PeerView - AS200132 BGP Dashboard
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/netone-nl/peerview)
+[![Version](https://img.shields.io/badge/version-1.0.1-blue.svg)](https://github.com/netone-nl/peerview)
 [![Python](https://img.shields.io/badge/python-3.11+-green.svg)](https://python.org)
 [![Flask](https://img.shields.io/badge/flask-3.0.0-lightgrey.svg)](https://flask.palletsprojects.com)
 [![Bootstrap](https://img.shields.io/badge/bootstrap-5.3.2-purple.svg)](https://getbootstrap.com)
@@ -15,7 +15,7 @@ A modern Python/Flask + Bootstrap 5 replacement for the PHP peering dashboard, p
 - **RESTful API** endpoints for programmatic access
 - **Async HTTP** calls to BIRD routers for better performance
 - **Caching system** to reduce load on routers
-- **Docker deployment** ready with multi-stage builds
+- **Docker/Podman deployment** ready with multi-stage builds
 
 ### Dashboard Capabilities
 - **Real-time BGP session monitoring** across 8+ IXPs
@@ -59,6 +59,35 @@ docker-compose up -d
 # Access dashboard at http://localhost:5000
 ```
 
+### Using Podman
+
+Podman is fully supported and can be used as a drop-in replacement for Docker:
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd peerview
+
+# Option 1: Use podman-compose (if installed)
+podman-compose up -d
+
+# Option 2: Use docker-compose with Podman backend
+COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_HOST=unix://$XDG_RUNTIME_DIR/podman/podman.sock docker-compose up -d
+
+# Option 3: Build and run manually with Podman
+podman build -t peerview .
+podman run -d --name as200132-peerview \
+  -p 5000:5000 \
+  -v ./config.yaml:/app/config.yaml:ro \
+  -e FLASK_ENV=production \
+  -e PYTHONUNBUFFERED=1 \
+  peerview
+
+# Access dashboard at http://localhost:5000
+```
+
+**Note**: Podman runs rootless by default, which is more secure. If you need root privileges for specific operations, use `sudo podman` or configure rootless networking appropriately.
+
 ### Manual Installation
 
 ```bash
@@ -83,6 +112,9 @@ gunicorn --bind 0.0.0.0:5000 --workers 4 app:app
 
 # Or use the provided Docker setup with Nginx
 docker-compose -f docker-compose.yml up -d
+
+# Or use Podman
+podman-compose -f docker-compose.yml up -d
 ```
 
 ## Configuration
@@ -226,9 +258,9 @@ curl -X GET http://localhost:5000/api/summary | jq
 
 ## Deployment Options
 
-### Docker Deployment
+### Docker/Podman Deployment
 
-The provided `Dockerfile` uses multi-stage builds for optimal image size and security:
+The provided `Dockerfile` uses multi-stage builds for optimal image size and security. It is compatible with both Docker and Podman:
 
 ```dockerfile
 # Multi-stage build with security hardening
@@ -239,9 +271,9 @@ FROM python:3.11-slim
 # ... production stage with non-root user
 ```
 
-### Docker Compose
+### Docker Compose / Podman Compose
 
-Full stack deployment with optional components:
+Full stack deployment with optional components. Works with both `docker-compose` and `podman-compose`:
 
 ```yaml
 services:
@@ -283,7 +315,7 @@ WantedBy=multi-user.target
 
 ### Health Checks
 - **HTTP Health Check**: `GET /api/summary`
-- **Docker Health Check**: Built into container
+- **Container Health Check**: Built into container (works with both Docker and Podman)
 - **Kubernetes Ready**: Health check endpoints available
 
 ### Logging
@@ -343,6 +375,8 @@ curl -v https://raw.githubusercontent.com/poweredgenl/networkstuff/main/peering/
 
 # Check application logs
 docker logs as200132-peerview
+# Or with Podman:
+podman logs as200132-peerview
 ```
 
 **Sessions show as unknown status:**
@@ -366,6 +400,8 @@ netstat -an | grep "29184\|29186"
 
 # Monitor memory usage
 docker stats as200132-peerview
+# Or with Podman:
+podman stats as200132-peerview
 ```
 
 ### Debug Mode
@@ -393,7 +429,7 @@ FLASK_ENV=development python app.py
 2. **User Experience**: Modern responsive UI vs static table
 3. **API Access**: RESTful endpoints vs screen scraping
 4. **Maintainability**: Clean Python code vs complex PHP
-5. **Deployment**: Docker containers vs manual PHP setup
+5. **Deployment**: Docker/Podman containers vs manual PHP setup
 6. **Monitoring**: Structured logging and metrics
 7. **Security**: Modern security practices built-in
 
@@ -453,4 +489,4 @@ For support and questions:
 
 ---
 
-**PeerView v1.0.0** - Modern BGP peering dashboard for AS200132, built with Python, Flask, and Bootstrap 5.
+**PeerView v1.0.1** - Modern BGP peering dashboard for AS200132, built with Python, Flask, and Bootstrap 5.
