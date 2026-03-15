@@ -7,10 +7,9 @@ Python Flask + Bootstrap 5 replacement for PHP peering dashboard
 import asyncio
 import aiohttp
 import yaml
-import json
 import ipaddress
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass, asdict
 from flask import Flask, render_template, request, jsonify
@@ -143,7 +142,8 @@ class PeeringDashboard:
         """Fetch BGP sessions from a router"""
         try:
             url = f"http://{router}:{port}/protocols/bgp"
-            async with session.get(url, timeout=30) as response:
+            timeout = aiohttp.ClientTimeout(total=30)
+            async with session.get(url, timeout=timeout) as response:
                 if response.status == 200:
                     data = await response.json()
                     return data.get('protocols', {})
@@ -158,7 +158,11 @@ class PeeringDashboard:
         """Fetch peer definitions from GitHub"""
         try:
             url = self.config['session_definition_url']
-            async with session.get(url, timeout=30) as response:
+            if not url.startswith('https://'):
+                logger.error(f"Refusing to fetch session definitions from non-HTTPS URL: {url}")
+                return {}
+            timeout = aiohttp.ClientTimeout(total=30)
+            async with session.get(url, timeout=timeout) as response:
                 if response.status == 200:
                     yaml_content = await response.text()
                     return yaml.safe_load(yaml_content)
@@ -237,19 +241,19 @@ class PeeringDashboard:
     def get_session_status_class(self, session: BGPSession) -> str:
         """Get CSS class for session status"""
         if session.state == 'Established':
-            return 'success'
-        
+            return 'established'
+
         try:
             since_time = datetime.fromisoformat(session.since.replace('Z', '+00:00'))
-            age = (datetime.now() - since_time).total_seconds()
-            
+            age = (datetime.now(tz=timezone.utc) - since_time).total_seconds()
+
             if age < self.config['warning_thresholds']['short']:
                 return 'warning'
             elif age < self.config['warning_thresholds']['long']:
                 return 'info'
             else:
                 return 'danger'
-        except:
+        except Exception:
             return 'secondary'
     
     def filter_peers(self, peers: Dict[str, PeerStatus], filters: Dict) -> Dict[str, PeerStatus]:
@@ -287,7 +291,7 @@ class PeeringDashboard:
                                 should_include = False
                                 break
                         elif filter_value == 'not_connected':
-                            if not any(s.state != 'Established' for s in ix_sessions):
+                            if not (ix_sessions and any(s.state != 'Established' for s in ix_sessions)):
                                 should_include = False
                                 break
                         elif filter_value == 'not_configured':
@@ -322,6 +326,23 @@ class PeeringDashboard:
 # Global dashboard instance
 dashboard = PeeringDashboard()
 
+_ALLOWED_SORT_COLUMNS = {'asn', 'name'}
+_ALLOWED_SORT_DIRECTIONS = {'asc', 'desc'}
+
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "font-src https://cdn.jsdelivr.net; "
+        "connect-src 'self';"
+    )
+    return response
+
 @app.route('/')
 async def index():
     """Main peering dashboard page"""
@@ -347,7 +368,11 @@ async def index():
     
     # Sort peers
     sort_column = request.args.get('sort', 'asn')
+    if sort_column not in _ALLOWED_SORT_COLUMNS:
+        sort_column = 'asn'
     sort_direction = request.args.get('sortdir', 'asc')
+    if sort_direction not in _ALLOWED_SORT_DIRECTIONS:
+        sort_direction = 'asc'
     
     if sort_column == 'name':
         peers = dict(sorted(peers.items(), 
@@ -439,4 +464,4 @@ def health_check():
     })
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)

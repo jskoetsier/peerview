@@ -363,18 +363,18 @@ function showPeerDetails(asn) {
         .then(data => {
             if (data.error) {
                 document.getElementById('peerModalBody').innerHTML = `
-                    <div class="alert alert-danger">${data.error}</div>
+                    <div class="alert alert-danger">${escapeHtml(data.error)}</div>
                 `;
                 return;
             }
-            
+
             let html = `
                 <div class="row mb-3">
                     <div class="col-md-6">
                         <h6>Basic Information</h6>
                         <table class="table table-sm">
-                            <tr><td><strong>ASN:</strong></td><td>${data.asn}</td></tr>
-                            <tr><td><strong>Description:</strong></td><td>${data.description || 'Unknown'}</td></tr>
+                            <tr><td><strong>ASN:</strong></td><td>${escapeHtml(data.asn)}</td></tr>
+                            <tr><td><strong>Description:</strong></td><td>${escapeHtml(data.description) || 'Unknown'}</td></tr>
                         </table>
                     </div>
                     <div class="col-md-6">
@@ -439,17 +439,17 @@ function showPeerDetails(asn) {
                     html += `
                         <div class="col-md-6">
                             <h6>${afi.toUpperCase()}</h6>
-                            ${sessions.length > 0 ? 
+                            ${sessions.length > 0 ?
                                 sessions.map(session => `
                                     <div class="card mb-2">
                                         <div class="card-body p-2">
                                             <div class="d-flex justify-content-between">
-                                                <span class="session-status status-${getStatusClass(session.state)}">
-                                                    ${session.state}
+                                                <span class="session-status status-${escapeHtml(getStatusClass(session.state))}">
+                                                    ${escapeHtml(session.state)}
                                                 </span>
-                                                <small class="text-muted">${formatDateTime(session.since)}</small>
+                                                <small class="text-muted">${escapeHtml(formatDateTime(session.since))}</small>
                                             </div>
-                                            <small class="text-muted">${session.neighbor_address}</small>
+                                            <small class="text-muted">${escapeHtml(session.neighbor_address)}</small>
                                         </div>
                                     </div>
                                 `).join('')
@@ -473,7 +473,7 @@ function showPeerDetails(asn) {
         })
         .catch(error => {
             document.getElementById('peerModalBody').innerHTML = `
-                <div class="alert alert-danger">Error loading peer details: ${error.message}</div>
+                <div class="alert alert-danger">Error loading peer details: ${escapeHtml(error.message)}</div>
             `;
         });
 }
@@ -481,6 +481,16 @@ function showPeerDetails(asn) {
 function getStatusClass(state) {
     if (state === 'Established') return 'established';
     return 'danger';
+}
+
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 // Initialize page
