@@ -3,7 +3,7 @@ PeerView - Modern BGP Peering Dashboard
 Version information and metadata
 """
 
-__version__ = "1.0.1"
+__version__ = "1.1.0"
 __title__ = "PeerView"
 __description__ = "Modern BGP peering dashboard for AS200132 with real-time session monitoring"
 __author__ = "NetOne.nl"
@@ -17,9 +17,9 @@ VERSION_INFO = {
     "author": __author__,
     "license": __license__,
     "copyright": __copyright__,
-    "build_date": "2024-01-16",
+    "build_date": "2026-03-15",
     "python_version": "3.11+",
-    "framework": "Flask 3.0.0",
+    "framework": "Flask 3.1.3",
     "ui_framework": "Bootstrap 5.3.2"
 }
 
