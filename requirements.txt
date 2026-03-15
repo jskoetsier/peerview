@@ -1,6 +1,6 @@
 # Python dependencies for PeerView - AS200132 BGP Dashboard
 # Flask web framework and async support
-Flask==3.0.0
+Flask[async]==3.0.0
 aiohttp==3.9.1
 asyncio-mqtt==0.16.1
 
