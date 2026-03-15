@@ -217,8 +217,14 @@
         
         function updateLastRefresh() {
             const now = new Date();
-            document.getElementById('last-update').textContent = 
-                'Last updated: ' + now.toLocaleTimeString();
+            const fmt = localStorage.getItem('timeFormat') || 'local-24h';
+            let timeStr;
+            if (fmt === 'utc-24h') {
+                timeStr = now.toLocaleTimeString(undefined, {hour12: false, timeZone: 'UTC', timeZoneName: 'short'});
+            } else {
+                timeStr = now.toLocaleTimeString(undefined, {hour12: fmt === 'local-12h'});
+            }
+            document.getElementById('last-update').textContent = 'Last updated: ' + timeStr;
         }
         
         // Initialize

@@ -10,6 +10,17 @@
                 BGP Peering Sessions
             </h1>
             <div class="d-flex gap-2">
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" id="timeFormatDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-clock me-1"></i><span id="timeFormatLabel">Local 24h</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="timeFormatDropdown">
+                        <li><h6 class="dropdown-header">Time Format</h6></li>
+                        <li><a class="dropdown-item" href="#" onclick="setTimeFormat('local-24h')">Local (24h)</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="setTimeFormat('local-12h')">Local (12h)</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="setTimeFormat('utc-24h')">UTC (24h)</a></li>
+                    </ul>
+                </div>
                 <button class="btn btn-outline-primary btn-sm" onclick="window.location.reload()">
                     <i class="bi bi-arrow-clockwise me-1"></i>Refresh
                 </button>
@@ -269,17 +280,48 @@
 function updateSessionStats() {
     let established = 0;
     let down = 0;
-    
-    document.querySelectorAll('.session-status').forEach(status => {
+
+    document.querySelectorAll('.peer-table .session-status').forEach(status => {
         if (status.classList.contains('status-established')) {
             established++;
-        } else if (!status.classList.contains('text-muted')) {
+        } else {
             down++;
         }
     });
-    
+
     document.getElementById('established-count').textContent = established;
     document.getElementById('down-count').textContent = down;
+}
+
+// Time format preference
+function setTimeFormat(fmt) {
+    localStorage.setItem('timeFormat', fmt);
+    const labels = {'local-24h': 'Local 24h', 'local-12h': 'Local 12h', 'utc-24h': 'UTC 24h'};
+    document.getElementById('timeFormatLabel').textContent = labels[fmt];
+}
+
+function formatDateTime(isoString) {
+    if (!isoString) return '-';
+    try {
+        const dt = new Date(isoString);
+        if (isNaN(dt.getTime())) return isoString;
+        const fmt = localStorage.getItem('timeFormat') || 'local-24h';
+        if (fmt === 'utc-24h') {
+            return dt.toLocaleString(undefined, {
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                hour12: false, timeZone: 'UTC', timeZoneName: 'short'
+            });
+        } else {
+            return dt.toLocaleString(undefined, {
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                hour12: fmt === 'local-12h'
+            });
+        }
+    } catch (e) {
+        return isoString;
+    }
 }
 
 // Toggle filter section
@@ -405,7 +447,7 @@ function showPeerDetails(asn) {
                                                 <span class="session-status status-${getStatusClass(session.state)}">
                                                     ${session.state}
                                                 </span>
-                                                <small class="text-muted">${session.since}</small>
+                                                <small class="text-muted">${formatDateTime(session.since)}</small>
                                             </div>
                                             <small class="text-muted">${session.neighbor_address}</small>
                                         </div>
@@ -444,6 +486,11 @@ function getStatusClass(state) {
 // Initialize page
 document.addEventListener('DOMContentLoaded', function() {
     updateSessionStats();
+
+    // Restore saved time format label
+    const savedFmt = localStorage.getItem('timeFormat') || 'local-24h';
+    const labels = {'local-24h': 'Local 24h', 'local-12h': 'Local 12h', 'utc-24h': 'UTC 24h'};
+    document.getElementById('timeFormatLabel').textContent = labels[savedFmt];
     
     // Auto-submit form on filter changes
     document.querySelectorAll('#filterForm select').forEach(select => {
