@@ -6,6 +6,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.1] - 2026-03-16
+
+### Fixed
+- **Status colors not showing for down sessions** — BIRD router returns timestamps in format `2026-03-12 07:24:33` (space separator), but code expected ISO format `2026-03-12T07:24:33Z`. When parsing failed, all down sessions defaulted to gray (`secondary`) instead of showing appropriate warning colors (yellow/orange/red) based on session age. Added handling for plain datetime format with `strptime`.
+
+---
+
 ## [1.1.0] - 2026-03-15
 
 ### Added
